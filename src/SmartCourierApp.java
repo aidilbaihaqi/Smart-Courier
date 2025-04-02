@@ -32,9 +32,6 @@ public class SmartCourierApp extends JFrame {
     private Timer moveTimer;
     private int pathIndex = 0;
 
-    private enum Direction {
-        UP, RIGHT, DOWN, LEFT
-    }
 
     public SmartCourierApp() {
         setTitle("Smart Courier Simulator");

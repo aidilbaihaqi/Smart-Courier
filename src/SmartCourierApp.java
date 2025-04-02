@@ -171,56 +171,6 @@ public class SmartCourierApp extends JFrame {
         return path;
     }
 
-    private class MapPanel extends JPanel {
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            if (mapImage != null) g.drawImage(mapImage, 0, 0, null);
-
-            if (!path.isEmpty()) {
-                g.setColor(Color.GREEN);
-                for (Point p : path) {
-                    g.fillRect(p.x, p.y, 1, 1);
-                }
-            }
-
-            if (courierPos != null) {
-                drawCourier(g, courierPos.x, courierPos.y);
-            }
-
-            if (destinationPos != null) {
-                g.setColor(Color.RED);
-                g.fillRect(destinationPos.x - 5, destinationPos.y - 5, 10, 10);
-            }
-        }
-
-        private void drawCourier(Graphics g, int x, int y) {
-            Graphics2D g2 = (Graphics2D) g;
-            g2.setColor(Color.BLUE);
-            int[] xs, ys;
-            switch (courierDir) {
-                case UP:
-                    xs = new int[]{x, x - courierSize / 2, x + courierSize / 2};
-                    ys = new int[]{y - courierSize / 2, y + courierSize / 2, y + courierSize / 2};
-                    break;
-                case RIGHT:
-                    xs = new int[]{x + courierSize / 2, x - courierSize / 2, x - courierSize / 2};
-                    ys = new int[]{y, y - courierSize / 2, y + courierSize / 2};
-                    break;
-                case DOWN:
-                    xs = new int[]{x, x - courierSize / 2, x + courierSize / 2};
-                    ys = new int[]{y + courierSize / 2, y - courierSize / 2, y - courierSize / 2};
-                    break;
-                case LEFT:
-                    xs = new int[]{x - courierSize / 2, x + courierSize / 2, x + courierSize / 2};
-                    ys = new int[]{y, y - courierSize / 2, y + courierSize / 2};
-                    break;
-                default:
-                    return;
-            }
-            g2.fillPolygon(xs, ys, 3);
-        }
-    }
-
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             SmartCourierApp app = new SmartCourierApp();

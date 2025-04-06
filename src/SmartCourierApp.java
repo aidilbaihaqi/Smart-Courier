@@ -1,5 +1,6 @@
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
@@ -25,17 +26,21 @@ import javax.swing.Timer;
 
 public class SmartCourierApp extends JFrame {
     private BufferedImage mapImage;
-    private Point courierPos, destinationPos;
+    private Point courierPos, sourcePos, destinationPos;
     private Direction courierDir = Direction.RIGHT;
     private final int courierSize = 20;
-    private java.util.List<Point> path = new ArrayList<>();
+    private List<Point> path = new ArrayList<>();
     private Timer moveTimer;
     private int pathIndex = 0;
+    private boolean hasPickedUp = false;
 
+    private enum Direction {
+        UP, RIGHT, DOWN, LEFT
+    }
 
     public SmartCourierApp() {
         setTitle("Smart Courier Simulator");
-        setSize(1000, 700);
+        setSize(1200, 800);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
         JButton loadMapBtn = new JButton("Load Map");
@@ -66,19 +71,37 @@ public class SmartCourierApp extends JFrame {
 
         randomizeBtn.addActionListener(e -> {
             if (mapImage == null) return;
-            courierPos = randomValidPoint();
+            sourcePos = randomValidPoint();
             destinationPos = randomValidPoint();
+            courierPos = new Point(sourcePos.x - 1, sourcePos.y); // geser agar source terlihat
+            faceTowards(courierPos, sourcePos); // menghadap ke source
             path.clear();
+            hasPickedUp = false;
             mapPanel.repaint();
         });
 
         startBtn.addActionListener(e -> {
-            if (courierPos == null || destinationPos == null) return;
-            path = findPath(courierPos, destinationPos);
-            if (path.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Tidak ada jalur yang ditemukan!");
+            if (courierPos == null || sourcePos == null || destinationPos == null) return;
+            if (!hasPickedUp) {
+                if (!isFacingTarget(courierPos, sourcePos)) {
+                    JOptionPane.showMessageDialog(this, "Kurir harus menghadap ke arah source (bendera kuning) untuk mengambil paket!");
+                    return;
+                }
+                hasPickedUp = true;
+                path = findPath(courierPos, destinationPos);
+                if (path.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "Tidak ada jalur ke tujuan!");
+                    return;
+                }
+            } else {
+                if (!isFacingTarget(courierPos, destinationPos)) {
+                    JOptionPane.showMessageDialog(this, "Kurir harus menghadap ke arah destinasi (bendera merah) untuk mengantar paket!");
+                    return;
+                }
+                JOptionPane.showMessageDialog(this, "Paket berhasil diantar!");
                 return;
             }
+
             pathIndex = 0;
             if (moveTimer != null) moveTimer.stop();
             moveTimer = new Timer(10, evt -> {
@@ -90,11 +113,33 @@ public class SmartCourierApp extends JFrame {
                     mapPanel.repaint();
                 } else {
                     ((Timer) evt.getSource()).stop();
-                    JOptionPane.showMessageDialog(this, "Paket berhasil diantar!");
+                    JOptionPane.showMessageDialog(this, "Kurir tiba di destinasi. Tekan Mulai lagi untuk antar paket (validasi arah).");
                 }
             });
             moveTimer.start();
         });
+    }
+
+    private void faceTowards(Point from, Point to) {
+        int dx = to.x - from.x;
+        int dy = to.y - from.y;
+        if (Math.abs(dx) > Math.abs(dy)) {
+            courierDir = dx > 0 ? Direction.RIGHT : Direction.LEFT;
+        } else {
+            courierDir = dy > 0 ? Direction.DOWN : Direction.UP;
+        }
+    }
+
+    private boolean isFacingTarget(Point from, Point to) {
+        int dx = to.x - from.x;
+        int dy = to.y - from.y;
+        switch (courierDir) {
+            case RIGHT: return dx > 0 && Math.abs(dx) >= Math.abs(dy);
+            case LEFT:  return dx < 0 && Math.abs(dx) >= Math.abs(dy);
+            case UP:    return dy < 0 && Math.abs(dy) >= Math.abs(dx);
+            case DOWN:  return dy > 0 && Math.abs(dy) >= Math.abs(dx);
+        }
+        return false;
     }
 
     private void updateDirection(Point current, Point next) {
@@ -161,11 +206,69 @@ public class SmartCourierApp extends JFrame {
         while (!current.equals(start)) {
             path.add(current);
             current = cameFrom.get(current);
-            if (current == null) return new ArrayList<>(); // no path
+            if (current == null) return new ArrayList<>();
         }
         path.add(start);
         Collections.reverse(path);
         return path;
+    }
+
+    private class MapPanel extends JPanel {
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            if (mapImage != null) g.drawImage(mapImage, 0, 0, null);
+
+            if (!path.isEmpty()) {
+                g.setColor(Color.GREEN);
+                for (Point p : path) {
+                    g.fillRect(p.x, p.y, 1, 1);
+                }
+            }
+
+            if (sourcePos != null) {
+                g.setColor(Color.YELLOW);
+                g.fillRect(sourcePos.x - 6, sourcePos.y - 6, 12, 12);
+                g.setColor(Color.BLACK);
+                g.setFont(new Font("Arial", Font.BOLD, 10));
+                g.drawString("S", sourcePos.x - 4, sourcePos.y + 4);
+            }
+
+            if (destinationPos != null) {
+                g.setColor(Color.RED);
+                g.fillRect(destinationPos.x - 5, destinationPos.y - 5, 10, 10);
+            }
+
+            if (courierPos != null) {
+                drawCourier(g, courierPos.x, courierPos.y);
+            }
+        }
+
+        private void drawCourier(Graphics g, int x, int y) {
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setColor(Color.BLUE);
+            int[] xs, ys;
+            switch (courierDir) {
+                case UP:
+                    xs = new int[]{x, x - courierSize / 2, x + courierSize / 2};
+                    ys = new int[]{y - courierSize / 2, y + courierSize / 2, y + courierSize / 2};
+                    break;
+                case RIGHT:
+                    xs = new int[]{x + courierSize / 2, x - courierSize / 2, x - courierSize / 2};
+                    ys = new int[]{y, y - courierSize / 2, y + courierSize / 2};
+                    break;
+                case DOWN:
+                    xs = new int[]{x, x - courierSize / 2, x + courierSize / 2};
+                    ys = new int[]{y + courierSize / 2, y - courierSize / 2, y - courierSize / 2};
+                    break;
+                case LEFT:
+                    xs = new int[]{x - courierSize / 2, x + courierSize / 2, x + courierSize / 2};
+                    ys = new int[]{y, y - courierSize / 2, y + courierSize / 2};
+                    break;
+                default:
+                    return;
+            }
+            g2.fillPolygon(xs, ys, 3);
+        }
     }
 
     public static void main(String[] args) {

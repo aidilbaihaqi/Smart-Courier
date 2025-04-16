@@ -39,6 +39,9 @@ public class SmartCourierApp extends JFrame {
     private int pathIndex = 0;
     private boolean hasPackage = false;
 
+    // Delivery-related variables
+    private Point currentTarget;
+
     public SmartCourierApp() {
         setTitle("Smart Courier - Auto Delivery");
         setSize(1200, 800);
@@ -178,9 +181,9 @@ public class SmartCourierApp extends JFrame {
 
     private void handleArrival() {
         moveTimer.stop();
-        if (!hasPackage) {
-            hasPackage = true;
-            startDelivery(); // Move to destination after pickup
+        if (currentTarget == sourcePos) {
+            hasPackage = true;  // Paket diambil, lanjutkan ke tujuan
+            startDelivery();  // Mulai pengiriman ke tujuan
         } else {
             JOptionPane.showMessageDialog(this, "Paket berhasil diantar ke tujuan!");
         }
@@ -192,17 +195,34 @@ public class SmartCourierApp extends JFrame {
 
         if (moveTimer != null && moveTimer.isRunning()) return;
 
+        // Cek apakah paket sudah diambil atau belum
         if (!hasPackage) {
-            path = findPath(courierPos, sourcePos);
+            currentTarget = sourcePos;  // Target pertama: pickup
+            faceTowards(courierPos, currentTarget);
+            path = findPath(courierPos, currentTarget);
         } else {
-            path = findPath(courierPos, destinationPos);
+            currentTarget = destinationPos;  // Target kedua: delivery
+            faceTowards(courierPos, currentTarget);
+            path = findPath(courierPos, currentTarget);
         }
 
+        // Jika path kosong, berarti tidak ada jalur yang tersedia
         if (path.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Tidak ada jalur yang tersedia!");
             return;
         }
 
+        // Mulai pergerakan kurir setelah menemukan jalur
         startMovement();
+    }
+
+    private void faceTowards(Point from, Point to) {
+        int dx = to.x - from.x;
+        int dy = to.y - from.y;
+        if (Math.abs(dx) > Math.abs(dy)) {
+            courierDir = dx > 0 ? Direction.RIGHT : Direction.LEFT;
+        } else {
+            courierDir = dy > 0 ? Direction.DOWN : Direction.UP;
+        }
     }
 }

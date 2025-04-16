@@ -10,10 +10,16 @@ import java.util.Iterator;
 import java.util.Set;
 import javax.imageio.ImageIO;
 import java.util.Random;
+import java.util.List;
+import java.util.Queue;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.HashSet;
 
 public class SmartCourierApp extends JFrame {
 
-    // GUI-related variables moved here to avoid conflict
+    // GUI-related variables
     private JPanel controlPanel;
     private JButton loadBtn;
     private JButton randomBtn;
@@ -22,7 +28,10 @@ public class SmartCourierApp extends JFrame {
     // Variables related to map and positions
     private BufferedImage mapImage;
     private Point courierStartPos, sourcePos, destinationPos, courierPos;
-    
+
+    // Pathfinding-related variables
+    private List<Point> path;
+
     public SmartCourierApp() {
         setTitle("Smart Courier - Auto Delivery");
         setSize(1200, 800);
@@ -48,7 +57,6 @@ public class SmartCourierApp extends JFrame {
     }
 
     // Map-related functions
-
     private void loadMap() {
         try {
             JFileChooser fc = new JFileChooser();
@@ -97,5 +105,47 @@ public class SmartCourierApp extends JFrame {
         return c.getRed() >= 90 && c.getRed() <= 150 &&
                c.getGreen() >= 90 && c.getGreen() <= 150 &&
                c.getBlue() >= 90 && c.getBlue() <= 150;
+    }
+
+    // Pathfinding-related functions
+    private List<Point> findPath(Point start, Point end) {
+        Queue<Point> queue = new LinkedList<>();
+        Map<Point, Point> cameFrom = new HashMap<>();
+        Set<Point> visited = new HashSet<>();
+        queue.add(start);
+        visited.add(start);
+
+        int[] dx = {0, 1, 0, -1};
+        int[] dy = {-1, 0, 1, 0};
+
+        while (!queue.isEmpty()) {
+            Point current = queue.poll();
+            if (current.equals(end)) break;
+
+            for (int i = 0; i < 4; i++) {
+                Point neighbor = new Point(current.x + dx[i], current.y + dy[i]);
+                if (isValidPoint(neighbor) && !visited.contains(neighbor)) {
+                    visited.add(neighbor);
+                    cameFrom.put(neighbor, current);
+                    queue.add(neighbor);
+                }
+            }
+        }
+
+        return reconstructPath(cameFrom, end);
+    }
+
+    private boolean isValidPoint(Point p) {
+        return p.x >= 0 && p.y >= 0 && p.x < mapImage.getWidth() && p.y < mapImage.getHeight();
+    }
+
+    private List<Point> reconstructPath(Map<Point, Point> cameFrom, Point end) {
+        LinkedList<Point> path = new LinkedList<>();
+        Point current = end;
+        while (cameFrom.containsKey(current)) {
+            path.addFirst(current);
+            current = cameFrom.get(current);
+        }
+        return path;
     }
 }

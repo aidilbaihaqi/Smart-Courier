@@ -16,6 +16,8 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.HashSet;
+import javax.swing.Timer;
+import javax.swing.JOptionPane;
 
 public class SmartCourierApp extends JFrame {
 
@@ -31,6 +33,11 @@ public class SmartCourierApp extends JFrame {
 
     // Pathfinding-related variables
     private List<Point> path;
+
+    // Variables for movement and path
+    private Timer moveTimer;
+    private int pathIndex = 0;
+    private boolean hasPackage = false;
 
     public SmartCourierApp() {
         setTitle("Smart Courier - Auto Delivery");
@@ -147,5 +154,55 @@ public class SmartCourierApp extends JFrame {
             current = cameFrom.get(current);
         }
         return path;
+    }
+
+    // Courier movement functions
+    private void startMovement() {
+        pathIndex = 0;
+        moveTimer = new Timer(50, e -> {
+            if (pathIndex < path.size()) {
+                updateCourierPosition();
+                repaint();
+            } else {
+                handleArrival();
+            }
+        });
+        moveTimer.start();
+    }
+
+    private void updateCourierPosition() {
+        Point next = path.get(pathIndex);
+        courierPos = next;
+        pathIndex++;
+    }
+
+    private void handleArrival() {
+        moveTimer.stop();
+        if (!hasPackage) {
+            hasPackage = true;
+            startDelivery(); // Move to destination after pickup
+        } else {
+            JOptionPane.showMessageDialog(this, "Paket berhasil diantar ke tujuan!");
+        }
+    }
+
+    // Delivery related functions
+    private void startDelivery() {
+        if (courierPos == null || sourcePos == null || destinationPos == null) return;
+
+        if (moveTimer != null && moveTimer.isRunning()) return;
+
+        if (!hasPackage) {
+            path = findPath(courierPos, sourcePos);
+        } else {
+            path = findPath(courierPos, destinationPos);
+        }
+
+        if (path.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Tidak ada jalur yang tersedia!");
+            return;
+        }
+
+        startMovement();
     }
 }

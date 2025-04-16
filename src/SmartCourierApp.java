@@ -41,6 +41,12 @@ public class SmartCourierApp extends JFrame {
 
     // Delivery-related variables
     private Point currentTarget;
+    private Direction courierDir;  // Add direction enum
+
+    // Enum for Directions (UP, DOWN, LEFT, RIGHT)
+    private enum Direction {
+        UP, RIGHT, DOWN, LEFT
+    }
 
     public SmartCourierApp() {
         setTitle("Smart Courier - Auto Delivery");
@@ -58,7 +64,8 @@ public class SmartCourierApp extends JFrame {
         controlPanel.add(startBtn);
         add(controlPanel, BorderLayout.SOUTH);
 
-        MapPanel mapPanel = new MapPanel();
+        // Assuming MapPanel is defined somewhere or replace it with a JPanel
+        JPanel mapPanel = new JPanel();  // Placeholder for MapPanel
         add(mapPanel, BorderLayout.CENTER);
 
         loadBtn.addActionListener(e -> loadMap());

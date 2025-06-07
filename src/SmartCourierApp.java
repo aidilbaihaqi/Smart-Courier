@@ -1,19 +1,13 @@
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Point;
+import java.awt.RenderingHints;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Path2D;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Random;
-import java.util.Set;
 import javax.imageio.ImageIO;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
@@ -21,31 +15,29 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
 
 public class SmartCourierApp extends JFrame {
     private BufferedImage mapImage;
     private Point courierStartPos, sourcePos, destinationPos, currentTarget;
     private Point courierPos;
     private Direction courierDir = Direction.RIGHT;
-    private final int courierSize = 20;
-    private List<Point> path = new ArrayList<>();
-    private Timer moveTimer;
+    private final int courierSizeRef = 20; // Segitiga besar agar anti-aliasing kelihatan
+    private java.util.List<Point> path = new java.util.ArrayList<>();
+    private javax.swing.Timer moveTimer;
     private int pathIndex = 0;
     private boolean hasPackage = false;
 
     private enum Direction { UP, RIGHT, DOWN, LEFT }
 
     public SmartCourierApp() {
-        setTitle("Smart Courier - Auto Delivery");
+        setTitle("Smart Courier - Anti-Aliasing Demo");
         setSize(1200, 800);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
         JPanel controlPanel = new JPanel();
-        JButton loadBtn = new JButton("Load Map");
+        JButton loadBtn   = new JButton("Load Map");
         JButton randomBtn = new JButton("Acak Posisi");
-        JButton startBtn = new JButton("Mulai");
-
+        JButton startBtn  = new JButton("Mulai");
         controlPanel.add(loadBtn);
         controlPanel.add(randomBtn);
         controlPanel.add(startBtn);
@@ -54,8 +46,14 @@ public class SmartCourierApp extends JFrame {
         MapPanel mapPanel = new MapPanel();
         add(mapPanel, BorderLayout.CENTER);
 
-        loadBtn.addActionListener(e -> loadMap());
-        randomBtn.addActionListener(e -> randomizePositions(mapPanel));
+        loadBtn.addActionListener(e -> {
+            loadMap();
+            mapPanel.repaint();
+        });
+        randomBtn.addActionListener(e -> {
+            randomizePositions();
+            mapPanel.repaint();
+        });
         startBtn.addActionListener(e -> startDelivery());
     }
 
@@ -64,61 +62,49 @@ public class SmartCourierApp extends JFrame {
             JFileChooser fc = new JFileChooser();
             if (fc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
                 mapImage = ImageIO.read(fc.getSelectedFile());
-                repaint(); // Trigger repaint after map is loaded
             }
         } catch (Exception ex) {
             ex.printStackTrace();
         }
     }
 
-    private void randomizePositions(JPanel mapPanel) {
+    private void randomizePositions() {
         if (mapImage == null) return;
-        
-        Set<Point> positions = new HashSet<>();
+        java.util.Set<Point> positions = new java.util.HashSet<>();
         while (positions.size() < 3) {
             Point p = randomValidPoint();
-            if (positions.stream().noneMatch(point -> point.distance(p) < 50)) {
+            if (positions.stream().noneMatch(existing -> existing.distance(p) < 50)) {
                 positions.add(p);
             }
         }
-        
-        Iterator<Point> it = positions.iterator();
+        java.util.Iterator<Point> it = positions.iterator();
         courierStartPos = it.next();
-        sourcePos = it.next();
-        destinationPos = it.next();
-        
+        sourcePos       = it.next();
+        destinationPos  = it.next();
+
         courierPos = new Point(courierStartPos);
         hasPackage = false;
         path.clear();
-        mapPanel.repaint();
+        pathIndex = 0;
     }
 
     private void startDelivery() {
         if (courierPos == null || sourcePos == null || destinationPos == null) return;
-        
         if (moveTimer != null && moveTimer.isRunning()) return;
-        
-        if (!hasPackage) {
-            currentTarget = sourcePos;
-            faceTowards(courierPos, currentTarget);
-            path = findPath(courierPos, currentTarget);
-        } else {
-            currentTarget = destinationPos;
-            faceTowards(courierPos, currentTarget);
-            path = findPath(courierPos, currentTarget);
-        }
-        
+
+        currentTarget = hasPackage ? destinationPos : sourcePos;
+        faceTowards(courierPos, currentTarget);
+        path = findPath(courierPos, currentTarget);
         if (path.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Tidak ada jalur yang tersedia!");
             return;
         }
-
         startMovement();
     }
 
     private void startMovement() {
         pathIndex = 0;
-        moveTimer = new Timer(50, e -> {
+        moveTimer = new javax.swing.Timer(30, e -> {
             if (pathIndex < path.size()) {
                 updateCourierPosition();
                 repaint();
@@ -138,17 +124,16 @@ public class SmartCourierApp extends JFrame {
 
     private void handleArrival() {
         moveTimer.stop();
-        if (currentTarget == sourcePos) {
+        if (currentTarget.equals(sourcePos)) {
             hasPackage = true;
-            startDelivery(); // Auto lanjut ke tujuan
+            startDelivery();
         } else {
             JOptionPane.showMessageDialog(this, "Paket berhasil diantar ke tujuan!");
         }
     }
 
     private void faceTowards(Point from, Point to) {
-        int dx = to.x - from.x;
-        int dy = to.y - from.y;
+        int dx = to.x - from.x, dy = to.y - from.y;
         if (Math.abs(dx) > Math.abs(dy)) {
             courierDir = dx > 0 ? Direction.RIGHT : Direction.LEFT;
         } else {
@@ -157,8 +142,7 @@ public class SmartCourierApp extends JFrame {
     }
 
     private void updateDirection(Point current, Point next) {
-        int dx = next.x - current.x;
-        int dy = next.y - current.y;
+        int dx = next.x - current.x, dy = next.y - current.y;
         if (Math.abs(dx) > Math.abs(dy)) {
             courierDir = dx > 0 ? Direction.RIGHT : Direction.LEFT;
         } else {
@@ -167,133 +151,173 @@ public class SmartCourierApp extends JFrame {
     }
 
     private Point randomValidPoint() {
-        Random rand = new Random();
-        int w = mapImage.getWidth();
-        int h = mapImage.getHeight();
+        java.util.Random rand = new java.util.Random();
+        int w = mapImage.getWidth(), h = mapImage.getHeight();
         while (true) {
-            int x = rand.nextInt(w);
-            int y = rand.nextInt(h);
+            int x = rand.nextInt(w), y = rand.nextInt(h);
             Color c = new Color(mapImage.getRGB(x, y));
             if (isRoad(c)) return new Point(x, y);
         }
     }
 
     private boolean isRoad(Color c) {
-        return c.getRed() >= 90 && c.getRed() <= 150 &&
+        return c.getRed()   >= 90 && c.getRed()   <= 150 &&
                c.getGreen() >= 90 && c.getGreen() <= 150 &&
-               c.getBlue() >= 90 && c.getBlue() <= 150;
+               c.getBlue()  >= 90 && c.getBlue()  <= 150;
     }
 
-    private List<Point> findPath(Point start, Point end) {
-        Queue<Point> queue = new LinkedList<>();
-        Map<Point, Point> cameFrom = new HashMap<>();
-        Set<Point> visited = new HashSet<>();
-        queue.add(start);
-        visited.add(start);
+    private java.util.List<Point> findPath(Point start, Point end) {
+        final int imgW = mapImage.getWidth(), imgH = mapImage.getHeight();
+        java.util.Set<Point> closedSet = new java.util.HashSet<>();
+        java.util.Map<Point, Integer> gScore = new java.util.HashMap<>();
+        java.util.Map<Point, Integer> fScore = new java.util.HashMap<>();
+        java.util.Map<Point, Point> cameFrom = new java.util.HashMap<>();
+        java.util.function.BiFunction<Point, Point, Integer> heuristic = (p, q) ->
+            Math.abs(p.x - q.x) + Math.abs(p.y - q.y);
 
-        int[] dx = {0, 1, 0, -1};
-        int[] dy = {-1, 0, 1, 0};
+        class Node implements Comparable<Node> {
+            Point p; int f;
+            Node(Point p, int f) { this.p = p; this.f = f; }
+            @Override public int compareTo(Node o) { return Integer.compare(this.f, o.f); }
+        }
 
-        while (!queue.isEmpty()) {
-            Point current = queue.poll();
+        java.util.PriorityQueue<Node> openSet = new java.util.PriorityQueue<>();
+        gScore.put(start, 0);
+        fScore.put(start, heuristic.apply(start, end));
+        openSet.add(new Node(start, fScore.get(start)));
+        int[] dx = {0, 1, 0, -1}, dy = {-1, 0, 1, 0};
+
+        while (!openSet.isEmpty()) {
+            Node currentNode = openSet.poll();
+            Point current = currentNode.p;
             if (current.equals(end)) break;
-
+            if (closedSet.contains(current)) continue;
+            closedSet.add(current);
             for (int i = 0; i < 4; i++) {
-                Point neighbor = new Point(
-                    current.x + dx[i], 
-                    current.y + dy[i]
-                );
-
-                if (isValidPoint(neighbor) && !visited.contains(neighbor)) {
-                    visited.add(neighbor);
+                Point neighbor = new Point(current.x + dx[i], current.y + dy[i]);
+                if (!isValidPoint(neighbor) || closedSet.contains(neighbor)) continue;
+                int tentativeG = gScore.getOrDefault(current, Integer.MAX_VALUE) + 1;
+                if (tentativeG < gScore.getOrDefault(neighbor, Integer.MAX_VALUE)) {
                     cameFrom.put(neighbor, current);
-                    queue.add(neighbor);
+                    gScore.put(neighbor, tentativeG);
+                    int fVal = tentativeG + heuristic.apply(neighbor, end);
+                    fScore.put(neighbor, fVal);
+                    openSet.add(new Node(neighbor, fVal));
                 }
             }
         }
-
-        return reconstructPath(cameFrom, end);
+        java.util.LinkedList<Point> totalPath = new java.util.LinkedList<>();
+        Point curr = end;
+        while (cameFrom.containsKey(curr)) {
+            totalPath.addFirst(curr);
+            curr = cameFrom.get(curr);
+        }
+        return totalPath;
     }
 
     private boolean isValidPoint(Point p) {
-        return p.x >= 0 && p.y >= 0 && 
-               p.x < mapImage.getWidth() && 
-               p.y < mapImage.getHeight() && 
+        return p.x >= 0 && p.y >= 0 &&
+               p.x < mapImage.getWidth() && p.y < mapImage.getHeight() &&
                isRoad(new Color(mapImage.getRGB(p.x, p.y)));
     }
 
-    private List<Point> reconstructPath(Map<Point, Point> cameFrom, Point end) {
-        LinkedList<Point> path = new LinkedList<>();
-        Point current = end;
-        while (cameFrom.containsKey(current)) {
-            path.addFirst(current);
-            current = cameFrom.get(current);
-        }
-        return path;
-    }
-
-    // Define a MapPanel class for drawing map and courier
     private class MapPanel extends JPanel {
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
-            if (mapImage != null) g.drawImage(mapImage, 0, 0, null);
-
-            // Draw positions
-            drawPosition(g, courierStartPos, Color.GREEN, "Start");
-            drawPosition(g, sourcePos, Color.YELLOW, "Pickup");
-            drawPosition(g, destinationPos, Color.RED, "Delivery");
-
-            // Draw path
-            g.setColor(new Color(0, 255, 255, 100));
-            for (Point p : path) {
-                g.fillRect(p.x, p.y, 2, 2);
-            }
-
-            // Draw courier
-            drawCourier(g);
-        }
-
-        private void drawPosition(Graphics g, Point pos, Color color, String label) {
-            if (pos == null) return;
-            g.setColor(color);
-            g.fillRect(pos.x - 5, pos.y - 5, 10, 10);
-            g.setColor(Color.BLACK);
-            g.drawString(label, pos.x + 8, pos.y + 5);
-        }
-
-        private void drawCourier(Graphics g) {
+            if (mapImage == null) return;
             Graphics2D g2 = (Graphics2D) g;
-            g2.setColor(hasPackage ? new Color(255, 0, 0) : new Color(0, 0, 255));
-            
-            int x = courierPos.x;
-            int y = courierPos.y;
-            int[] xs = new int[3];
-            int[] ys = new int[3];
-            
-            switch (courierDir) {
-                case UP:
-                    xs = new int[]{x, x - courierSize/2, x + courierSize/2};
-                    ys = new int[]{y - courierSize/2, y + courierSize/2, y + courierSize/2};
-                    break;
-                case DOWN:
-                    xs = new int[]{x, x - courierSize/2, x + courierSize/2};
-                    ys = new int[]{y + courierSize/2, y - courierSize/2, y - courierSize/2};
-                    break;
-                case LEFT:
-                    xs = new int[]{x - courierSize/2, x + courierSize/2, x + courierSize/2};
-                    ys = new int[]{y, y - courierSize/2, y + courierSize/2};
-                    break;
-                case RIGHT:
-                    xs = new int[]{x + courierSize/2, x - courierSize/2, x - courierSize/2};
-                    ys = new int[]{y, y - courierSize/2, y + courierSize/2};
-                    break;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+            int panelW = getWidth(), panelH = getHeight();
+            int imgW = mapImage.getWidth(), imgH = mapImage.getHeight();
+            double scale = Math.min((double) panelW / imgW, (double) panelH / imgH);
+            int drawW = (int) (imgW * scale), drawH = (int) (imgH * scale);
+            g2.drawImage(mapImage, 0, 0, drawW, drawH, null);
+
+            g2.setColor(new Color(0, 255, 255, 100));
+            int r = Math.max((int) (2 * scale), 2);
+            for (Point p : path) {
+                int x = (int) (p.x * scale), y = (int) (p.y * scale);
+                g2.fillOval(x - r, y - r, 2 * r, 2 * r);
             }
-            g2.fillPolygon(xs, ys, 3);
+
+            drawPosition(g2, courierStartPos, Color.GREEN,  "Start", scale);
+            drawPosition(g2, sourcePos,       Color.ORANGE, "Pickup", scale);
+            drawPosition(g2, destinationPos,  Color.RED,    "Delivery", scale);
+
+            drawCourierAA(g2, scale);
+        }
+
+        private void drawPosition(Graphics2D g2, Point pos, Color color, String label, double scale) {
+            if (pos == null) return;
+            int size = Math.max((int) (12 * scale), 7);
+            int x = (int) (pos.x * scale), y = (int) (pos.y * scale);
+            g2.setColor(color);
+            g2.fillRect(x - size/2, y - size/2, size, size);
+            g2.setColor(Color.BLACK);
+            g2.setFont(g2.getFont().deriveFont(Font.BOLD, (float)(13 * scale)));
+            g2.drawString(label, x + size, y);
+        }
+
+        private void drawCourierAA(Graphics2D g2, double scale) {
+            if (courierPos == null) return;
+            float sz = (float) (courierSizeRef * scale);
+            float half = sz/2f;
+            float cx = (float)(courierPos.x * scale);
+            float cy = (float)(courierPos.y * scale);
+
+            Path2D.Float tri = new Path2D.Float();
+            tri.moveTo(sz/2, 0);          // puncak depan
+            tri.lineTo(-sz/2, -sz/2);     // sudut belakang atas
+            tri.lineTo(-sz/2, sz/2);      // sudut belakang bawah
+            tri.closePath();
+
+            double angleRad = 0;
+            switch (courierDir) {
+                case RIGHT: angleRad = 0; break;
+                case UP:    angleRad = -Math.PI/2; break;
+                case DOWN:  angleRad = Math.PI/2; break;
+                case LEFT:  angleRad = Math.PI; break;
+            }
+
+            AffineTransform saveAT = g2.getTransform();
+            g2.translate(cx, cy);
+            g2.rotate(angleRad);
+
+            g2.setColor(hasPackage ? new Color(255,0,0) : new Color(0,0,255));
+            g2.fill(tri);
+
+            g2.setStroke(new BasicStroke((float)Math.max(2f*scale, 1f)));
+            g2.setColor(Color.BLACK);
+            g2.draw(tri);
+
+            g2.setTransform(saveAT);
+        }
+    }
+
+    private static class Point {
+        int x, y;
+        Point(int x, int y) { this.x = x; this.y = y; }
+        Point(Point p)      { this.x = p.x; this.y = p.y; }
+        @Override public boolean equals(Object o) {
+            if (!(o instanceof Point)) return false;
+            Point p = (Point) o;
+            return this.x == p.x && this.y == p.y;
+        }
+        @Override public int hashCode() { return x*31 + y; }
+        double distance(Point p) {
+            double dx = this.x - p.x, dy = this.y - p.y;
+            return Math.hypot(dx, dy);
         }
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new SmartCourierApp().setVisible(true));
+        SwingUtilities.invokeLater(() -> {
+            SmartCourierApp app = new SmartCourierApp();
+            app.setVisible(true);
+        });
     }
 }

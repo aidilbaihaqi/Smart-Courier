@@ -216,6 +216,16 @@ public class SmartCourierApp extends JFrame {
         return totalPath;
     }
 
+    private boolean validatePoint(Point p) {
+    Color c = new Color(mapImage.getRGB(p.x, p.y));
+    if (!isRoad(c)) {
+        JOptionPane.showMessageDialog(this,
+            "Titik (" + p.x + ", " + p.y + ") berada di luar jalur,\njalur tidak ditemukan.");
+        return false;
+    }
+    return true;
+}
+
     private boolean isValidPoint(Point p) {
         return p.x >= 0 && p.y >= 0 &&
                p.x < mapImage.getWidth() && p.y < mapImage.getHeight() &&

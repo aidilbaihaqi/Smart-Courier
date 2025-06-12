@@ -69,30 +69,43 @@ public class SmartCourierApp extends JFrame {
     }
 
     private void randomizePositions() {
-        if (mapImage == null) return;
-        java.util.Set<Point> positions = new java.util.HashSet<>();
-        while (positions.size() < 3) {
-            Point p = randomValidPoint();
-            if (positions.stream().noneMatch(existing -> existing.distance(p) < 50)) {
-                positions.add(p);
-            }
+    if (mapImage == null) return;
+    java.util.Set<Point> positions = new java.util.HashSet<>();
+    while (positions.size() < 3) {
+        Point p = randomValidPoint();
+        if (positions.stream().noneMatch(existing -> existing.distance(p) < 50)) {
+            positions.add(p);
         }
-        java.util.Iterator<Point> it = positions.iterator();
-        courierStartPos = it.next();
-        sourcePos       = it.next();
-        destinationPos  = it.next();
-
-        courierPos = new Point(courierStartPos);
-        hasPackage = false;
-        path.clear();
-        pathIndex = 0;
     }
+    java.util.Iterator<Point> it = positions.iterator();
+    courierStartPos = it.next();
+    sourcePos       = it.next();
+    destinationPos  = it.next();
+
+    if (!isValidPoint(courierStartPos) || !isValidPoint(sourcePos) || !isValidPoint(destinationPos)) {
+        courierStartPos = null;
+        sourcePos = null;
+        destinationPos = null;
+        courierPos = null;
+        path.clear();
+        JOptionPane.showMessageDialog(this, "Titik diluar dari jalur, jalur tidak ditemukan.");
+        return;
+    }
+
+    courierPos = new Point(courierStartPos);
+    hasPackage = false;
+    path = findPath(courierStartPos, sourcePos); // preview jalur awal
+    pathIndex = 0;
+}
 
     private void startDelivery() {
         if (courierPos == null || sourcePos == null || destinationPos == null) return;
         if (moveTimer != null && moveTimer.isRunning()) return;
-
         currentTarget = hasPackage ? destinationPos : sourcePos;
+        if (!isValidPoint(courierPos) || !isValidPoint(currentTarget)) {
+    JOptionPane.showMessageDialog(this, "Titik diluar dari jalur, jalur tidak ditemukan.");
+    return;
+}
         faceTowards(courierPos, currentTarget);
         path = findPath(courierPos, currentTarget);
         if (path.isEmpty()) {
@@ -156,17 +169,31 @@ public class SmartCourierApp extends JFrame {
         while (true) {
             int x = rand.nextInt(w), y = rand.nextInt(h);
             Color c = new Color(mapImage.getRGB(x, y));
-            if (isRoad(c)) return new Point(x, y);
+            if (isRoad(x,y)) return new Point(x, y);
         }
     }
 
-    private boolean isRoad(Color c) {
-        return c.getRed()   >= 90 && c.getRed()   <= 150 &&
-               c.getGreen() >= 90 && c.getGreen() <= 150 &&
-               c.getBlue()  >= 90 && c.getBlue()  <= 150;
+private boolean isRoad(int x, int y) {
+    if (x < 0 || y < 0 || x >= mapImage.getWidth() || y >= mapImage.getHeight()) return false;
+    Color pixelColor = new Color(mapImage.getRGB(x, y));
+    
+    // Warna jalan target: abu-abu gelap ke sedang
+    int r = pixelColor.getRed();
+    int g = pixelColor.getGreen();
+    int b = pixelColor.getBlue();
+
+    // Cek apakah warna cukup dekat dengan abu-abu (R=G=B)
+    int tolerance = 30;
+    boolean isGrayLike = Math.abs(r - g) < tolerance && Math.abs(r - b) < tolerance && Math.abs(g - b) < tolerance;
+    boolean isDarkEnough = r < 160; // tidak terlalu terang
+    return isGrayLike && isDarkEnough;
     }
 
     private java.util.List<Point> findPath(Point start, Point end) {
+        if (start == null || end == null || !isValidPoint(start) || !isValidPoint(end)) {
+    return new java.util.ArrayList<>();
+        }
+
         final int imgW = mapImage.getWidth(), imgH = mapImage.getHeight();
         java.util.Set<Point> closedSet = new java.util.HashSet<>();
         java.util.Map<Point, Integer> gScore = new java.util.HashMap<>();
@@ -218,7 +245,7 @@ public class SmartCourierApp extends JFrame {
     private boolean isValidPoint(Point p) {
         return p.x >= 0 && p.y >= 0 &&
                p.x < mapImage.getWidth() && p.y < mapImage.getHeight() &&
-               isRoad(new Color(mapImage.getRGB(p.x, p.y)));
+               isRoad(p.x, p.y);
     }
 
     private class MapPanel extends JPanel {

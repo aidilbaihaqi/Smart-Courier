@@ -69,34 +69,24 @@ public class SmartCourierApp extends JFrame {
     }
 
     private void randomizePositions() {
-    if (mapImage == null) return;
-    java.util.Set<Point> positions = new java.util.HashSet<>();
-    while (positions.size() < 3) {
-        Point p = randomValidPoint();
-        if (positions.stream().noneMatch(existing -> existing.distance(p) < 50)) {
-            positions.add(p);
+        if (mapImage == null) return;
+        java.util.Set<Point> positions = new java.util.HashSet<>();
+        while (positions.size() < 3) {
+            Point p = randomValidPoint();
+            if (positions.stream().noneMatch(existing -> existing.distance(p) < 50)) {
+                positions.add(p);
+            }
         }
+        java.util.Iterator<Point> it = positions.iterator();
+        courierStartPos = it.next();
+        sourcePos       = it.next();
+        destinationPos  = it.next();
+
+        courierPos = new Point(courierStartPos);
+        hasPackage = false;
+        path.clear();
+        pathIndex = 0;
     }
-    java.util.Iterator<Point> it = positions.iterator();
-    courierStartPos = it.next();
-    sourcePos       = it.next();
-    destinationPos  = it.next();
-
-    if (!validatePoint(courierStartPos) || !validatePoint(sourcePos) || !validatePoint(destinationPos)) {
-        courierStartPos = null;
-        sourcePos = null;
-        destinationPos = null;
-        courierPos = null;
-        JOptionPane.showMessageDialog(this, "Titik diluar dari jalur, jalur tidak ditemukan.");
-        return;
-    }
-
-    courierPos = new Point(courierStartPos);
-    hasPackage = false;
-    path = findPath(courierStartPos, sourcePos); // <--- langsung buat preview rute
-    pathIndex = 0;
-}
-
 
     private void startDelivery() {
         if (courierPos == null || sourcePos == null || destinationPos == null) return;
@@ -106,10 +96,10 @@ public class SmartCourierApp extends JFrame {
         faceTowards(courierPos, currentTarget);
         path = findPath(courierPos, currentTarget);
         if (path.isEmpty()) {
-    JOptionPane.showMessageDialog(this, "Titik diluar dari jalur, jalur tidak ditemukan.");
-    return;
-}
-path.addAll(findPath(sourcePos, destinationPos)); // Gabung dua rute untuk preview lengkap
+            JOptionPane.showMessageDialog(this, "Tidak ada jalur yang tersedia!");
+            return;
+        }
+        startMovement();
     }
 
     private void startMovement() {
@@ -170,27 +160,13 @@ path.addAll(findPath(sourcePos, destinationPos)); // Gabung dua rute untuk previ
         }
     }
 
-
-    
     private boolean isRoad(Color c) {
-    int r = c.getRed(), g = c.getGreen(), b = c.getBlue();
-    boolean neutral = Math.abs(r-g)<20 && Math.abs(r-b)<20 && Math.abs(g-b)<20;
-    int brightness = (r+g+b)/3;
-    return neutral && brightness >= 40 && brightness <= 200;
-}
-
-    private boolean validatePoint(Point p) {
-    Color c = new Color(mapImage.getRGB(p.x, p.y));
-    if (!isRoad(c)) {
-        JOptionPane.showMessageDialog(this,
-            "Titik (" + p.x + ", " + p.y + ") berada di luar jalur,\njalur tidak ditemukan.");
-        return false;
+        return c.getRed()   >= 90 && c.getRed()   <= 150 &&
+               c.getGreen() >= 90 && c.getGreen() <= 150 &&
+               c.getBlue()  >= 90 && c.getBlue()  <= 150;
     }
-    return true;
-}
 
     private java.util.List<Point> findPath(Point start, Point end) {
-        if (!isValidPoint(start) || !isValidPoint(end)) return new java.util.ArrayList<>();
         final int imgW = mapImage.getWidth(), imgH = mapImage.getHeight();
         java.util.Set<Point> closedSet = new java.util.HashSet<>();
         java.util.Map<Point, Integer> gScore = new java.util.HashMap<>();
@@ -337,15 +313,6 @@ path.addAll(findPath(sourcePos, destinationPos)); // Gabung dua rute untuk previ
             return Math.hypot(dx, dy);
         }
     }
-
-    static class Node {
-    Point p; int f, g;
-    Node(Point p, int f, int g) {
-        this.p = p;
-        this.f = f;
-        this.g = g;
-    }
-}
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {

@@ -68,25 +68,36 @@ public class SmartCourierApp extends JFrame {
         }
     }
 
-    private void randomizePositions() {
-        if (mapImage == null) return;
-        java.util.Set<Point> positions = new java.util.HashSet<>();
-        while (positions.size() < 3) {
-            Point p = randomValidPoint();
-            if (positions.stream().noneMatch(existing -> existing.distance(p) < 50)) {
-                positions.add(p);
-            }
-        }
-        java.util.Iterator<Point> it = positions.iterator();
-        courierStartPos = it.next();
-        sourcePos       = it.next();
-        destinationPos  = it.next();
+private void randomizePositions() {
+    if (mapImage == null) return;
 
-        courierPos = new Point(courierStartPos);
-        hasPackage = false;
-        path.clear();
-        pathIndex = 0;
+    java.util.Random rnd = new java.util.Random();
+    java.util.Set<Point> positions = new java.util.HashSet<>();
+
+    // Ulangi sampai mendapatkan 3 titik valid dan cukup berjauhan
+    while (positions.size() < 3) {
+        Point p = randomValidPoint(); // pastikan fungsi ini hanya mengembalikan titik di jalan
+        if (isRoad(p.x, p.y) &&
+            positions.stream().noneMatch(existing -> existing.distance(p) < 50)) {
+            positions.add(p);
+        }
     }
+
+    java.util.Iterator<Point> it = positions.iterator();
+    courierStartPos = it.next();
+    sourcePos = it.next();
+    destinationPos = it.next();
+
+    courierPos = new Point(courierStartPos);
+    hasPackage = false;
+    path.clear();
+    pathIndex = 0;
+
+    // 🔍 Tambahan baru: Jalur bayangan dari courier ke source
+    previewPath = findPath(courierStartPos, sourcePos);
+
+    repaint(); // untuk menggambar ulang dengan previewPath
+}
 
     private void startDelivery() {
         if (courierPos == null || sourcePos == null || destinationPos == null) return;
@@ -247,7 +258,21 @@ public class SmartCourierApp extends JFrame {
             double scale = Math.min((double) panelW / imgW, (double) panelH / imgH);
             int drawW = (int) (imgW * scale), drawH = (int) (imgH * scale);
             g2.drawImage(mapImage, 0, 0, drawW, drawH, null);
+            if (previewPath != null && !previewPath.isEmpty()) {
+    g2.setColor(Color.LIGHT_GRAY);
+    g2.setStroke(new BasicStroke(2));
 
+    Point prev = previewPath.get(0);
+    for (int i = 1; i < previewPath.size(); i++) {
+        Point curr = previewPath.get(i);
+        int x1 = (int)(prev.x * scale);
+        int y1 = (int)(prev.y * scale);
+        int x2 = (int)(curr.x * scale);
+        int y2 = (int)(curr.y * scale);
+        g2.drawLine(x1, y1, x2, y2);
+        prev = curr;
+    }
+}
             g2.setColor(new Color(0, 255, 255, 100));
             int r = Math.max((int) (2 * scale), 2);
             for (Point p : path) {

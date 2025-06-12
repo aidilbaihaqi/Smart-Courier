@@ -161,9 +161,10 @@ public class SmartCourierApp extends JFrame {
     }
 
     private boolean isRoad(Color c) {
-        return c.getRed()   >= 90 && c.getRed()   <= 150 &&
-               c.getGreen() >= 90 && c.getGreen() <= 150 &&
-               c.getBlue()  >= 90 && c.getBlue()  <= 150;
+    int r = c.getRed(), g = c.getGreen(), b = c.getBlue();
+    boolean neutral = Math.abs(r - g) < 20 && Math.abs(r - b) < 20 && Math.abs(g - b) < 20;
+    int brightness = (r + g + b) / 3;
+    return neutral && brightness >= 40 && brightness <= 200;
     }
 
     private java.util.List<Point> findPath(Point start, Point end) {

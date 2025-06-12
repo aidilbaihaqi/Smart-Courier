@@ -106,10 +106,10 @@ public class SmartCourierApp extends JFrame {
         faceTowards(courierPos, currentTarget);
         path = findPath(courierPos, currentTarget);
         if (path.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Tidak ada jalur yang tersedia!");
-            return;
-        }
-        startMovement();
+    JOptionPane.showMessageDialog(this, "Titik diluar dari jalur, jalur tidak ditemukan.");
+    return;
+}
+path.addAll(findPath(sourcePos, destinationPos)); // Gabung dua rute untuk preview lengkap
     }
 
     private void startMovement() {

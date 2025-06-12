@@ -69,24 +69,34 @@ public class SmartCourierApp extends JFrame {
     }
 
     private void randomizePositions() {
-        if (mapImage == null) return;
-        java.util.Set<Point> positions = new java.util.HashSet<>();
-        while (positions.size() < 3) {
-            Point p = randomValidPoint();
-            if (positions.stream().noneMatch(existing -> existing.distance(p) < 50)) {
-                positions.add(p);
-            }
+    if (mapImage == null) return;
+    java.util.Set<Point> positions = new java.util.HashSet<>();
+    while (positions.size() < 3) {
+        Point p = randomValidPoint();
+        if (positions.stream().noneMatch(existing -> existing.distance(p) < 50)) {
+            positions.add(p);
         }
-        java.util.Iterator<Point> it = positions.iterator();
-        courierStartPos = it.next();
-        sourcePos       = it.next();
-        destinationPos  = it.next();
-
-        courierPos = new Point(courierStartPos);
-        hasPackage = false;
-        path.clear();
-        pathIndex = 0;
     }
+    java.util.Iterator<Point> it = positions.iterator();
+    courierStartPos = it.next();
+    sourcePos       = it.next();
+    destinationPos  = it.next();
+
+    if (!validatePoint(courierStartPos) || !validatePoint(sourcePos) || !validatePoint(destinationPos)) {
+        courierStartPos = null;
+        sourcePos = null;
+        destinationPos = null;
+        courierPos = null;
+        JOptionPane.showMessageDialog(this, "Titik diluar dari jalur, jalur tidak ditemukan.");
+        return;
+    }
+
+    courierPos = new Point(courierStartPos);
+    hasPackage = false;
+    path = findPath(courierStartPos, sourcePos); // <--- langsung buat preview rute
+    pathIndex = 0;
+}
+
 
     private void startDelivery() {
         if (courierPos == null || sourcePos == null || destinationPos == null) return;
@@ -180,6 +190,7 @@ public class SmartCourierApp extends JFrame {
 }
 
     private java.util.List<Point> findPath(Point start, Point end) {
+        if (!isValidPoint(start) || !isValidPoint(end)) return new java.util.ArrayList<>();
         final int imgW = mapImage.getWidth(), imgH = mapImage.getHeight();
         java.util.Set<Point> closedSet = new java.util.HashSet<>();
         java.util.Map<Point, Integer> gScore = new java.util.HashMap<>();

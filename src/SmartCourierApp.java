@@ -70,6 +70,22 @@ public class SmartCourierApp extends JFrame {
 
     private void randomizePositions() {
     if (mapImage == null) return;
+
+    // Hentikan timer jika sedang berjalan
+    if (moveTimer != null && moveTimer.isRunning()) {
+        moveTimer.stop();
+    }
+
+    // Reset semua status
+    courierStartPos = null;
+    sourcePos = null;
+    destinationPos = null;
+    courierPos = null;
+    path.clear();
+    hasPackage = false;
+    pathIndex = 0;
+
+    // Acak 3 titik valid
     java.util.Set<Point> positions = new java.util.HashSet<>();
     while (positions.size() < 3) {
         Point p = randomValidPoint();
@@ -77,6 +93,7 @@ public class SmartCourierApp extends JFrame {
             positions.add(p);
         }
     }
+
     java.util.Iterator<Point> it = positions.iterator();
     courierStartPos = it.next();
     sourcePos       = it.next();
@@ -87,14 +104,16 @@ public class SmartCourierApp extends JFrame {
         sourcePos = null;
         destinationPos = null;
         courierPos = null;
-        path.clear();
         JOptionPane.showMessageDialog(this, "Titik diluar dari jalur, jalur tidak ditemukan.");
         return;
     }
 
     courierPos = new Point(courierStartPos);
+    courierDir = Direction.RIGHT; // reset arah
     hasPackage = false;
-    path = findPath(courierStartPos, sourcePos); // preview jalur awal
+
+    // Preview path
+    path = findPath(courierStartPos, sourcePos);
     pathIndex = 0;
 }
 
